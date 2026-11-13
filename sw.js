@@ -1,4 +1,4 @@
-const CACHE = "santini-del-dharma-v1";
+const CACHE = "santini-del-dharma-v2";
 const ASSETS = [
   "./",
   "./index.html",
