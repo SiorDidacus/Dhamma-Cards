@@ -13,6 +13,9 @@ nella forma, dedicati a figure e episodi del mondo buddhista.
   (Su desktop: frecce ← → della tastiera.)
 - I puntini in basso indicano e permettono di saltare direttamente a una pagina.
 - Le carte già lette mostrano un piccolo punto dorato (memoria salvata sul telefono).
+- **Sull'ultima pagina trovi il tile "+"**: premi «Nuova carta», scegli l'immagine del
+  fronte, poi quella del retro, dai un titolo (facoltativo) e salva. La carta appare
+  subito nella collezione, ed è salvata sul telefono (funziona anche offline).
 
 ## Contenuto
 
@@ -32,11 +35,13 @@ maestri del Tibet e maestri Zen e contemporanei. Le illustrazioni sono SVG diseg
 ```
 index.html            struttura dell'app
 styles.css            stile (carte, flip 3D, swipe, overlay)
-app.js                logica: pagine, flip, overlay, memoria carte lette
+app.js                logica: pagine, flip, overlay, aggiunta carte personali
 data.js               collezione: 24 carte (titolo, didascalia, citazione, motivo)
 manifest.webmanifest  manifest PWA
 sw.js                 service worker per l'uso offline
 icons/                icone dell'app
+cards/                le carte come immagini PNG (fronte e retro, 750×1050 px)
+tools/                script per rigenerare le PNG di cards/
 ```
 
 ## Aggiungere nuove carte

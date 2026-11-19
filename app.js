@@ -140,30 +140,51 @@
     return '<svg class="motif" viewBox="0 0 200 200" aria-hidden="true" focusable="false">' + (MOTIFS[name] || MOTIFS.lotus) + "</svg>";
   }
 
+  function escAttr(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
   function cardHTML(c, extraClass) {
+    const isPhoto = typeof c.front === "string" && c.front.indexOf("data:") === 0;
+    let frontInner;
+    let backInner;
+    if (isPhoto) {
+      frontInner = '<div class="frame photo-frame"><img class="photo" src="' + c.front + '" alt=""></div>';
+      backInner = '<div class="frame back-frame photo-frame"><img class="photo" src="' + c.back + '" alt=""></div>';
+    } else {
+      frontInner =
+        '<div class="frame" style="--accent:' + c.accent + '">' +
+          '<div class="halo"></div>' +
+          motifSVG(c.motif) +
+          '<h2 class="card-title">' + escAttr(c.title) + "</h2>" +
+          '<p class="didascalia">' + escAttr(c.text) + "</p>" +
+        "</div>";
+      backInner =
+        '<div class="frame back-frame" style="--accent:' + c.accent + '">' +
+          '<div class="ornament">&#10022;</div>' +
+          '<blockquote class="quote">&ldquo;' + escAttr(c.quote) + "&rdquo;</blockquote>" +
+          '<cite class="source">' + escAttr(c.source) + "</cite>" +
+          '<div class="ornament">&#10022;</div>' +
+        "</div>";
+    }
     return (
-      '<article class="card ' + (extraClass || "") + '" data-id="' + c.id + '" tabindex="0" role="button" aria-label="' + c.title + '">' +
+      '<article class="card ' + (extraClass || "") + '" data-id="' + escAttr(c.id) + '" tabindex="0" role="button" aria-label="' + escAttr(c.title) + '">' +
         '<div class="card-inner">' +
-          '<div class="face front">' +
-            '<div class="frame" style="--accent:' + c.accent + '">' +
-              '<div class="halo"></div>' +
-              motifSVG(c.motif) +
-              '<h2 class="card-title">' + c.title + "</h2>" +
-              '<p class="didascalia">' + c.text + "</p>" +
-            "</div>" +
-          "</div>" +
-          '<div class="face back">' +
-            '<div class="frame back-frame" style="--accent:' + c.accent + '">' +
-              '<div class="ornament">&#10022;</div>' +
-              '<blockquote class="quote">&ldquo;' + c.quote + "&rdquo;</blockquote>" +
-              '<cite class="source">' + c.source + "</cite>" +
-              '<div class="ornament">&#10022;</div>' +
-            "</div>" +
-          "</div>" +
+          '<div class="face front">' + frontInner + "</div>" +
+          '<div class="face back">' + backInner + "</div>" +
         "</div>" +
       "</article>"
     );
   }
+
+  const ADD_TILE_HTML =
+    '<article class="card mini add-tile" tabindex="0" role="button" aria-label="Aggiungi una nuova carta">' +
+      '<div class="add-inner">' +
+        '<div class="add-plus">+</div>' +
+        '<div class="add-label">Nuova carta</div>' +
+        '<div class="add-sub">scegli fronte e retro</div>' +
+      "</div>" +
+    "</article>";
 
   const pagesEl = document.getElementById("pages");
   const dotsEl = document.getElementById("dots");
@@ -174,6 +195,31 @@
   const hint = document.getElementById("hint");
 
   let pageCount = 0;
+
+  const CUSTOM_KEY = "santini-custom";
+
+  function loadCustoms() {
+    try {
+      const arr = JSON.parse(localStorage.getItem(CUSTOM_KEY) || "[]");
+      return Array.isArray(arr) ? arr.filter(function (c) { return c && c.id && c.front && c.back; }) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function allCards() {
+    return COLLECTION.concat(loadCustoms());
+  }
+
+  function saveCustoms(arr) {
+    try {
+      localStorage.setItem(CUSTOM_KEY, JSON.stringify(arr));
+      return true;
+    } catch (e) {
+      window.alert("Memoria del telefono piena: prova immagini più piccole.");
+      return false;
+    }
+  }
 
   function viewedSet() {
     try {
@@ -194,15 +240,18 @@
   function build() {
     pagesEl.innerHTML = "";
     dotsEl.innerHTML = "";
-    for (let p = 0; p * CARDS_PER_PAGE < COLLECTION.length; p++) {
-      const slice = COLLECTION.slice(p * CARDS_PER_PAGE, (p + 1) * CARDS_PER_PAGE);
+    const tiles = allCards().map(function (c) {
+      return cardHTML(c, "mini");
+    }).concat([ADD_TILE_HTML]);
+    for (let p = 0; p * CARDS_PER_PAGE < tiles.length; p++) {
+      const slice = tiles.slice(p * CARDS_PER_PAGE, (p + 1) * CARDS_PER_PAGE);
       const page = document.createElement("section");
       page.className = "page";
       page.setAttribute("aria-label", "Pagina " + (p + 1));
       const grid = document.createElement("div");
       grid.className = "grid";
-      slice.forEach(function (c) {
-        grid.insertAdjacentHTML("beforeend", cardHTML(c, "mini"));
+      slice.forEach(function (html) {
+        grid.insertAdjacentHTML("beforeend", html);
       });
       page.appendChild(grid);
       pagesEl.appendChild(page);
@@ -215,7 +264,7 @@
       });
       dotsEl.appendChild(dot);
     }
-    pageCount = Math.ceil(COLLECTION.length / CARDS_PER_PAGE);
+    pageCount = Math.ceil(tiles.length / CARDS_PER_PAGE);
     const seen = viewedSet();
     seen.forEach(function (id) {
       const mini = pagesEl.querySelector('[data-id="' + id + '"]');
@@ -251,9 +300,12 @@
   }
 
   function openOverlay(card) {
+    const isPhoto = typeof card.front === "string" && card.front.indexOf("data:") === 0;
+    const hintFront = isPhoto ? "Tocca la carta per vederne il retro" : "Tocca la carta per girarla";
     overlayStage.innerHTML = "";
     overlayStage.insertAdjacentHTML("beforeend", cardHTML(card, "large"));
     const el = overlayStage.querySelector(".card");
+    hint.textContent = hintFront;
     el.addEventListener("click", function () {
       el.classList.toggle("flipped");
       if (el.classList.contains("flipped")) {
@@ -262,7 +314,7 @@
         const mini = pagesEl.querySelector('[data-id="' + card.id + '"]');
         if (mini) mini.classList.add("viewed");
       } else {
-        hint.textContent = "Tocca la carta per girarla";
+        hint.textContent = hintFront;
       }
     });
     overlay.hidden = false;
@@ -282,9 +334,13 @@
   }
 
   pagesEl.addEventListener("click", function (ev) {
+    if (ev.target.closest(".add-tile")) {
+      openAddFlow();
+      return;
+    }
     const card = ev.target.closest(".card");
-    if (!card) return;
-    const data = COLLECTION.find(function (c) { return c.id === card.dataset.id; });
+    if (!card || !card.dataset.id) return;
+    const data = allCards().find(function (c) { return c.id === card.dataset.id; });
     if (data) openOverlay(data);
   });
 
@@ -293,7 +349,154 @@
     if (ev.target === overlay) closeOverlay();
   });
 
+  /* ---------- Aggiunta di carte personalizzate ---------- */
+
+  const addOverlay = document.getElementById("addOverlay");
+  const addStepTitle = document.getElementById("addStepTitle");
+  const frontFile = document.getElementById("frontFile");
+  const backFile = document.getElementById("backFile");
+  const frontPreview = document.getElementById("frontPreview");
+  const backPreview = document.getElementById("backPreview");
+  const addTitleInput = document.getElementById("addTitleInput");
+  const addNext = document.getElementById("addNext");
+  const addNext2 = document.getElementById("addNext2");
+  const addBack = document.getElementById("addBack");
+  const addBack2 = document.getElementById("addBack2");
+  const addCancel = document.getElementById("addCancel");
+  const addSave = document.getElementById("addSave");
+
+  const STEP_TITLES = {
+    1: "Nuova carta · 1 di 3: il fronte",
+    2: "Nuova carta · 2 di 3: il retro",
+    3: "Nuova carta · 3 di 3: il titolo"
+  };
+
+  const addState = { step: 1, front: null, back: null };
+
+  function setAddStep(n) {
+    addState.step = n;
+    addStepTitle.textContent = STEP_TITLES[n];
+    document.getElementById("step1").hidden = n !== 1;
+    document.getElementById("step2").hidden = n !== 2;
+    document.getElementById("step3").hidden = n !== 3;
+  }
+
+  function resetAddFlow() {
+    addState.front = null;
+    addState.back = null;
+    addTitleInput.value = "";
+    frontFile.value = "";
+    backFile.value = "";
+    frontPreview.innerHTML = "<span>Nessuna immagine scelta</span>";
+    backPreview.innerHTML = "<span>Nessuna immagine scelta</span>";
+    addNext.disabled = true;
+    addNext2.disabled = true;
+    setAddStep(1);
+  }
+
+  function openAddFlow() {
+    resetAddFlow();
+    addOverlay.hidden = false;
+    requestAnimationFrame(function () {
+      addOverlay.classList.add("show");
+    });
+    document.body.classList.add("lock");
+  }
+
+  function closeAddFlow() {
+    addOverlay.classList.remove("show");
+    document.body.classList.remove("lock");
+    window.setTimeout(function () {
+      addOverlay.hidden = true;
+      resetAddFlow();
+    }, 250);
+  }
+
+  function compressImage(file, cb) {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = function () {
+      const max = 1200;
+      let w = img.width;
+      let h = img.height;
+      const scale = Math.min(1, max / Math.max(w, h));
+      w = Math.max(1, Math.round(w * scale));
+      h = Math.max(1, Math.round(h * scale));
+      const cv = document.createElement("canvas");
+      cv.width = w;
+      cv.height = h;
+      const ctx = cv.getContext("2d");
+      ctx.fillStyle = "#f6ecd4";
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      cb(cv.toDataURL("image/jpeg", 0.85));
+    };
+    img.onerror = function () {
+      URL.revokeObjectURL(url);
+      window.alert("Impossibile leggere l'immagine: prova con un altro file.");
+    };
+    img.src = url;
+  }
+
+  function bindFile(input, previewEl, done) {
+    input.addEventListener("change", function () {
+      const f = input.files && input.files[0];
+      if (!f) return;
+      compressImage(f, function (dataUrl) {
+        previewEl.innerHTML = "";
+        const im = new Image();
+        im.src = dataUrl;
+        im.alt = "Anteprima";
+        previewEl.appendChild(im);
+        done(dataUrl);
+      });
+    });
+  }
+
+  bindFile(frontFile, frontPreview, function (dataUrl) {
+    addState.front = dataUrl;
+    addNext.disabled = false;
+  });
+  bindFile(backFile, backPreview, function (dataUrl) {
+    addState.back = dataUrl;
+    addNext2.disabled = false;
+  });
+
+  addNext.addEventListener("click", function () { setAddStep(2); });
+  addBack.addEventListener("click", function () { setAddStep(1); });
+  addNext2.addEventListener("click", function () { setAddStep(3); });
+  addBack2.addEventListener("click", function () { setAddStep(2); });
+  addCancel.addEventListener("click", closeAddFlow);
+
+  addOverlay.addEventListener("click", function (ev) {
+    if (ev.target === addOverlay) closeAddFlow();
+  });
+
+  addSave.addEventListener("click", function () {
+    if (!addState.front || !addState.back) return;
+    const customs = loadCustoms();
+    const card = {
+      id: "custom-" + Date.now(),
+      title: addTitleInput.value.trim() || "Carta personalizzata",
+      front: addState.front,
+      back: addState.back
+    };
+    customs.push(card);
+    if (!saveCustoms(customs)) return;
+    closeAddFlow();
+    build();
+    const idx = allCards().findIndex(function (c) { return c.id === card.id; });
+    requestAnimationFrame(function () {
+      goToPage(Math.floor(idx / CARDS_PER_PAGE));
+    });
+  });
+
   document.addEventListener("keydown", function (ev) {
+    if (!addOverlay.hidden) {
+      if (ev.key === "Escape") closeAddFlow();
+      return;
+    }
     if (!overlay.hidden) {
       if (ev.key === "Escape") closeOverlay();
       if (ev.key === " " || ev.key === "Enter") {

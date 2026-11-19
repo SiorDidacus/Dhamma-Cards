@@ -23,6 +23,36 @@
 
   <nav class="dots" id="dots" aria-label="Pagine della collezione"></nav>
 
+  <div class="overlay add-overlay" id="addOverlay" hidden>
+    <div class="add-panel" role="dialog" aria-modal="true" aria-labelledby="addStepTitle">
+      <h2 id="addStepTitle">Nuova carta · 1 di 3: il fronte</h2>
+      <section class="add-step" id="step1">
+        <label class="file-btn">Scegli immagine del fronte<input type="file" id="frontFile" accept="image/*"></label>
+        <div class="add-preview" id="frontPreview"><span>Nessuna immagine scelta</span></div>
+        <div class="add-actions">
+          <button id="addCancel" class="ghost" type="button">Annulla</button>
+          <button id="addNext" class="primary" type="button" disabled>Avanti</button>
+        </div>
+      </section>
+      <section class="add-step" id="step2" hidden>
+        <label class="file-btn">Scegli immagine del retro<input type="file" id="backFile" accept="image/*"></label>
+        <div class="add-preview" id="backPreview"><span>Nessuna immagine scelta</span></div>
+        <div class="add-actions">
+          <button id="addBack" class="ghost" type="button">Indietro</button>
+          <button id="addNext2" class="primary" type="button" disabled>Avanti</button>
+        </div>
+      </section>
+      <section class="add-step" id="step3" hidden>
+        <label class="add-title-label" for="addTitleInput">Titolo della carta (facoltativo)</label>
+        <input type="text" id="addTitleInput" maxlength="60" placeholder="Es. La mia carta speciale">
+        <div class="add-actions">
+          <button id="addBack2" class="ghost" type="button">Indietro</button>
+          <button id="addSave" class="primary" type="button">Salva carta</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
   <div class="overlay" id="overlay" hidden>
     <button class="back-btn" id="backBtn" aria-label="Torna alla pagina">&#8592; Torna</button>
     <div class="overlay-stage" id="overlayStage"></div>
